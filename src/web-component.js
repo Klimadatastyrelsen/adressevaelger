@@ -99,59 +99,44 @@ export class AdresseSearchInput extends HTMLElement {
     if (name === "disabled" && newValue === "") {
       this.disabled = true;
     }
-    this.setAPI();
     this.renderInput();
+    this.setAPI();
   }
 
   setAPI() {
-    if (!this.token) {
+    if (!this.token || !this.inputElement) {
       return;
     }
-    const opt = this.options.apiUrl
-      ? { apiUrl: this.options.apiUrl, token: this.token }
-      : { token: this.token };
+    let opt = {
+      token: this.token,
+      inputElement: this.inputElement
+    }
+    if (this.options.apiUrl) {
+      opt.apiUrl = this.options.apiUrl
+    }
     this.api = new AdresseSearchAPI(opt);
   }
 
-  async selectHandler(event) {
-    const item = JSON.parse(event.target.dataset.item);
-    this.selectProcessor(item);
+  select(event) {
+    this.api.selectProcessor({
+      item: JSON.parse(event.target.dataset.item),
+      searchType: this.searchType,
+    }).then(async (result) => {
+      if (result.selection) {
+        this.listElement.hidePopover();
+      } else if (result.data) {
+        await this.refreshList(result.data.titel);
+      }
+    });
   }
 
-  async selectProcessor(item) {
-    if (
-      item.type === "vejnavn" ||
-      item.type === "navngivenvejpostnummer" ||
-      (item.type === "husnummer" && this.searchType === "adresser")
-    ) {
-      this.inputElement.value = item.titel;
-      await this.refreshList(item.titel);
-    } else {
-      await this.selectItem(item);
-      this.listElement.hidePopover();
-    }
-  }
-
-  async selectItem(item) {
-    try {
-      const data = await this.api.get(this.searchType, item.id);
-      this.inputElement.value = item.titel;
-      this.dispatchEvent(
-        new CustomEvent("address:select", {
-          bubbles: true,
-          composed: true,
-          detail: data,
-        }),
-      );
-    } catch (err) {
-      this.errorHandler(new Error(`Failed to fetch items: ${err.message}`));
-    }
+  selectHandler(event) {
+    this.select(event)
   }
 
   attachStyle() {
     const styleElement = document.createElement("style");
     styleElement.textContent = this.style;
-    //this.insertBefore(styleElement, this.listElement);
     document.head.append(styleElement);
   }
 
@@ -220,9 +205,7 @@ export class AdresseSearchInput extends HTMLElement {
       const data = await this.api.search(this.searchType, value, this.options);
       this.renderListItems(data);
     } catch (err) {
-      this.errorHandler(
-        new Error(`Failed to load search items: ${err.message}`),
-      );
+      this.api.errorHandler(new Error(`Failed to load search items: ${err.message}`));
     }
   }
 
@@ -245,7 +228,7 @@ export class AdresseSearchInput extends HTMLElement {
     }
   }
 
-  listKeyHandler(event) {
+  async listKeyHandler(event) {
     switch (event.key) {
       case "ArrowUp":
         this.moveFocus(-1);
@@ -255,21 +238,10 @@ export class AdresseSearchInput extends HTMLElement {
         break;
       case "Enter":
         this.listElement.hidePopover();
-        this.selectProcessor(JSON.parse(event.target.dataset.item));
+        this.select(event)
         break;
       default:
       // Nothing
     }
-  }
-
-  errorHandler(err) {
-    console.error(err);
-    this.dispatchEvent(
-      new CustomEvent("address:error", {
-        bubbles: true,
-        composed: true,
-        detail: { message: err.message },
-      }),
-    );
   }
 }

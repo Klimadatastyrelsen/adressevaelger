@@ -1,7 +1,7 @@
 import { AdresseSearchAPI } from "./api.js";
 
 export function adressevaelger(element, options) {
-  const adressevaelgerui = new AdresseSearchUI(element, options);
+  return new AdresseSearchUI(element, options);
 }
 
 export class AdresseSearchUI {
@@ -26,14 +26,19 @@ export class AdresseSearchUI {
       this.listKeyHandler.bind(this),
     );
     document.addEventListener("click", this.outsideClickHandler.bind(this));
-    const opt = this.options.apiUrl
-      ? { token: options.token, apiUrl: this.options.apiUrl }
-      : { token: options.token };
+    let opt = {
+      token: this.options.token,
+      inputElement: this.inputElement
+    }
+    if (this.options.apiUrl) {
+      opt.apiUrl = this.options.apiUrl
+    }
     this.api = new AdresseSearchAPI(opt);
   }
 
   inputHandler(event) {
     if (event.target.value === "") {
+      this.renderDOMList(this.listElement, []);
       return;
     }
     if (this.debounceTimer) {
@@ -53,9 +58,7 @@ export class AdresseSearchUI {
       );
       this.renderDOMList(this.listElement, data);
     } catch (err) {
-      this.errorHandler(
-        new Error(`Failed to load search items: ${err.message}`),
-      );
+      this.api.errorHandler(new Error(`Failed to load search items: ${err.message}`));
     }
   }
 
@@ -78,21 +81,10 @@ export class AdresseSearchUI {
     liEl.tabIndex = 0;
     liEl.dataset.item = JSON.stringify(item);
     liEl.addEventListener("click", (event) => {
-      this.selectProcessor(JSON.parse(event.target.dataset.item));
+      this.select(event);
     });
     liEl.innerText = item.titel;
     parentElement.append(liEl);
-  }
-
-  errorHandler(err) {
-    console.error(err);
-    this.inputElement.dispatchEvent(
-      new CustomEvent("address:error", {
-        bubbles: true,
-        composed: true,
-        detail: { message: err.message },
-      }),
-    );
   }
 
   listKeyHandler(event) {
@@ -105,7 +97,7 @@ export class AdresseSearchUI {
       this.listElement.querySelector(":focus")
     ) {
       this.inputElement.focus();
-      this.selectProcessor(JSON.parse(event.target.dataset.item));
+      this.select(event);
     } else if (event.key === "Escape") {
       this.inputElement.focus();
       this.listElement.querySelector("ul")?.remove();
@@ -141,34 +133,17 @@ export class AdresseSearchUI {
     this.listElement.querySelector(":focus")?.classList.add("dawa-selected");
   }
 
-  selectProcessor(item) {
-    if (
-      item.type === "vejnavn" ||
-      item.type === "navngivenvejpostnummer" ||
-      (item.type === "husnummer" && this.searchType === "adresser")
-    ) {
-      this.inputElement.value = item.titel;
-      this.refreshList(item.titel);
-    } else {
-      this.listElement.querySelector("ul")?.remove();
-      this.selectItem(item);
-    }
-  }
-
-  async selectItem(item) {
-    try {
-      const data = await this.api.get(this.searchType, item.id);
-      this.inputElement.value = item.titel;
-      this.inputElement.dispatchEvent(
-        new CustomEvent("address:select", {
-          bubbles: true,
-          composed: true,
-          detail: data,
-        }),
-      );
-      this.options.select(data);
-    } catch (err) {
-      this.errorHandler(new Error(`Failed to fetch items: ${err.message}`));
-    }
+  select(event) {
+    this.api.selectProcessor({
+      item: JSON.parse(event.target.dataset.item),
+      searchType: this.searchType,
+    }).then((result) => {
+      if (result.selection && result.data) {
+        this.listElement.querySelector("ul")?.remove();
+        this.options.select(result.data);
+      } else if (result.data) {
+        this.refreshList(result.data.titel);
+      }
+    });
   }
 }
