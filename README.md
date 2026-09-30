@@ -2,6 +2,8 @@
 
 A UI component for implementing Adressevælger search in Javascript applications.
 
+Current stable version is `5.0.1`. See [the Changelog.](./CHANGELOG.md)
+
 # Quick start
 
 The ready-to-use files are available in the dist/ folder in the repository:
