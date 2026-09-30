@@ -1,6 +1,6 @@
 # Adressevælger
 
-A UI component for implementing Adressevælger search in Javascript applications.
+A UI component for implementing Adressevælger (Address chooser) search in Javascript applications.
 
 Current stable version is `5.0.1`. See [the Changelog.](./CHANGELOG.md)
 
