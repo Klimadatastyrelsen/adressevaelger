@@ -4,7 +4,9 @@ A UI component for implementing Adressevælger (Address chooser) search in Javas
 
 Current stable version is `5.0.1`. See [the Changelog.](./CHANGELOG.md)
 
-# Quick start
+For questions, support, or security issues, please write to: support@kds.dk
+
+## Quick start
 
 The ready-to-use files are available in the dist/ folder in the repository:
 
